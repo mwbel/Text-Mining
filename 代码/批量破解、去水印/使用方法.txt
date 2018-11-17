@@ -1,0 +1,4 @@
+批量破解PDF并去除水印(仅报告吧水印)
+crack.py中crack(file_path,out_path)函数
+1、file_path参数为要破解文件所在路径
+2、out_path为破解后文件保存路径
