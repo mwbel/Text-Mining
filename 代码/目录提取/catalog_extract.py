@@ -34,12 +34,13 @@ def mkdir(path):
 
 # 预处理PDF，先进行初次判断
 def classify(path):
+    path_list = []
     keywords = '.........'
     mkpath1 = path + '/处理完成/'
-    mkpath2 = path + '/未处理完成/'
+    mkpath2 = path + '/暂时无法处理/'
     mkdir(mkpath1)
     mkdir(mkpath2)
-    for file in os.listdir(path):
+    for file in os.listdir(path.replace('\\', '/')):
         if file[-4:] == '.pdf':
             flag = False
             doc = fitz.open(os.path.join(path, file))
@@ -53,11 +54,14 @@ def classify(path):
                     break
             doc.close()
             if flag:
-                shutil.move(os.path.join(path, file), os.path.join(mkpath1, file))
+                file_dir = os.path.join(mkpath1, file[:-4])
+                mkdir(file_dir)
+                path_list.append(file_dir)
+                shutil.copy(os.path.join(path, file), os.path.join(file_dir, file))
             else:
-                shutil.move(os.path.join(path, file), os.path.join(mkpath2, file))
+                shutil.copy(os.path.join(path, file), os.path.join(mkpath2, file))
     # 返回初步含有目录的PDF路径
-    return mkpath1
+    return path_list
 
 
 # 求出两个子串的共同子序列
@@ -132,21 +136,21 @@ def deal_pdf_catalog(file_name):
     return catalog_text
 
 
-def first_write_catalog(path, mkpath1):
-    mk_path = path + '/研报目录/'
-    mkdir(mk_path)
-    for file in os.listdir(mkpath1):
-        file_name = os.path.join(mkpath1, file)
-        if file_name[-4:] == '.pdf':
-            result = deal_pdf_catalog(file_name)
-            pos = file.index('.')
-            last_file_name = mk_path + file[:pos + 1] + 'txt'
-            with open(last_file_name, 'w', encoding='utf8') as f:
-                f.writelines(result)
-    return mk_path
+def first_write_catalog(path_list):
+    for path in path_list:
+        for file in os.listdir(path):
+            file_name = os.path.join(path, file).replace('\\', '/')
+            print(file_name)
+            if file_name[-4:] == '.pdf':
+                result = deal_pdf_catalog(file_name)
+                pos = file.index('.')
+                last_file_name = os.path.join(path, file[:pos + 1] + 'txt')
+                with open(last_file_name, 'w', encoding='utf8') as f:
+                    f.writelines(result)
+    return path_list
 
 
-def deal_catalog(path):
+def deal_catalog(path_list):
     '''
     将提取的目录进行处理，把内容目录和图表目录分开
     :param file_list: pdf文件路径列
@@ -159,59 +163,63 @@ def deal_catalog(path):
     keyword5 = r'\d*\.\d*'
     keyword6 = r'\s*图\s*目\s*|\s*插\s*图\s*|\s*表\s*目\s*|\s*表\s*格\s*'
     keyword_not = r'本研究|证监许可|请仔细阅读|请阅读|请务必阅读|行业深度|行业：十年涅|资料来源|中金公司研|计算机行业：在技术|旅游深度报告|油服行业：油|专题报告：'
-    for file in os.listdir(path):
-        if file[-4:] == '.txt':
-            # print(file_name)
-            file_name1 = os.path.join(path, file)
-            fro = open(file_name1, "r", encoding='utf8')
-            filelist = fro.readlines()
-            result = []
-            for fileline in filelist:
-                # print(fileline,len(fileline))
-                # print(re.match(keyword, fileline, re.I))
-                if (re.match(keyword, fileline, re.I) or re.match(keyword4, fileline, re.I)) and '..' not in fileline:
-                    result.append('\n')
-                    result.append(fileline + '\n')
-                    result.append('\n')
-                if keyword1 in fileline or re.search(keyword2, fileline, re.I) or re.match(keyword5, fileline, re.I):
-                    if re.search(keyword_not, fileline, re.I):
-                        continue
+    for path in path_list:
+        for file in os.listdir(path):
+            if file[-4:] == '.txt':
+                # print(file_name)
+                file_name1 = os.path.join(path, file)
+                fro = open(file_name1, "r", encoding='utf8')
+                filelist = fro.readlines()
+                result = []
+                for fileline in filelist:
+                    # print(fileline,len(fileline))
+                    # print(re.match(keyword, fileline, re.I))
+                    if (re.match(keyword, fileline, re.I) or re.match(keyword4, fileline,
+                                                                      re.I)) and '..' not in fileline:
+                        result.append('\n')
+                        result.append(fileline + '\n')
+                        result.append('\n')
+                    if keyword1 in fileline or re.search(keyword2, fileline, re.I) or re.match(keyword5, fileline,
+                                                                                               re.I):
+                        if re.search(keyword_not, fileline, re.I):
+                            continue
+                        else:
+                            result.append(fileline)
                     else:
-                        result.append(fileline)
-                else:
-                    continue
-            fro.close()
-            count = 0
-            for deal in result:
-                if (re.match(keyword4, deal, re.I) or re.match(keyword6, deal, re.I)) and '..' not in deal:
-                    break
-                count += 1
-            # print(count)
-            pos = file.index('.')
-            newname = file[:pos + 1] + 'pdf' + '\n'
-            list1 = [newname] + result[0:count]
-            list2 = result[count:]
-            List_2_end = []
-            if len(list2) != 0:
-                list_head = []
-                list_head.append(newname + '\n')
-                list_head.append('\n')
-                List_2_end = list_head + list2
+                        continue
+                fro.close()
+                count = 0
+                for deal in result:
+                    if (re.match(keyword4, deal, re.I) or re.match(keyword6, deal, re.I)) and '..' not in deal:
+                        break
+                    count += 1
+                # print(count)
+                pos = file.index('.')
+                newname = file[:pos + 1] + 'pdf' + '\n'
+                list1 = [newname] + result[0:count]
+                list2 = result[count:]
+                List_2_end = []
+                if len(list2) != 0:
+                    list_head = []
+                    list_head.append(newname + '\n')
+                    list_head.append('\n')
+                    List_2_end = list_head + list2
 
-            os.remove(file_name1)  # 删除原目录
-            last_file_name = os.path.join(path, '目录-' + file)
-            last_file_name1 = os.path.join(path, '图表目录-' + file)
+                os.remove(file_name1)  # 删除原目录
+                last_file_name = os.path.join(path, '目录-' + file)
+                last_file_name1 = os.path.join(path, '图表目录-' + file)
 
-            with open(last_file_name, 'w', encoding='utf8') as f:
-                f.writelines(list1)
-            if len(List_2_end) != 0:
-                with open(last_file_name1, 'w', encoding='utf8') as f:
-                    f.writelines(List_2_end)
+                with open(last_file_name, 'w', encoding='utf8') as f:
+                    f.writelines(list1)
+                if len(List_2_end) != 0:
+                    with open(last_file_name1, 'w', encoding='utf8') as f:
+                        f.writelines(List_2_end)
 
 
 if __name__ == '__main__':
     # 写入要测试的pdf在文件夹，之后对目录进行筛选和提取
-    rootdir = 'D:\Study\工程项目\测试文件'
+    # 一定要用'/'
+    rootdir = 'D:/Study/工程项目/测试文件'
     deal_path = classify(rootdir)
-    catalog_path = first_write_catalog(rootdir, deal_path)
+    catalog_path = first_write_catalog(deal_path)
     deal_catalog(catalog_path)
