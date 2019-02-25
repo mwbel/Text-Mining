@@ -56,9 +56,12 @@ def get_file_links(file_name):
                 from_position = j['from'][0:]
                 to_page = j['page']
                 to_point = j['to'][0:]
-                del_one['position'] = from_position
+                # del_one['position'] = from_position
                 del_one['page'] = to_page + 1
                 del_one['point'] = to_point
+                width = doc[to_page].rect.y1
+                del_one['top'] = width - to_point[1]
+                # print('页面宽度---', width)
                 chapter_content = []
                 for one in blocks:
                     # print(one)
@@ -113,6 +116,8 @@ def batch_process(folder_path):
 
 
 if __name__ == '__main__':
-    # 测试
+    # 测试获取单个文件的段落信息
     # get_file_links('D:/OneDrive/OneDrive - stu.ecnu.edu.cn/Study/工程项目/测试文件1/20180816-民生证券-通信行业：5G频谱即将发放，带来产业全新机遇.pdf')
+    # 用于批量处理获取pdf相关段落位置信息
+    # 传入要处理的文件夹地址
     batch_process('D:/OneDrive/OneDrive - stu.ecnu.edu.cn/Study/工程项目/测试文件')
